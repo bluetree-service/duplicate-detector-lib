@@ -1,0 +1,52 @@
+{
+    "name": "bluetree-service/duplicate-detector-lib",
+    "type": "library",
+    "license": "Apache-2.0",
+    "description": "Find duplicated files (single process or multiple processes, optionally through Redis) and list, report or delete them.",
+    "keywords": ["duplicate", "files", "hash", "console"],
+    "homepage": "https://github.com/bluetree-service/duplicate-detector-lib",
+    "authors": [
+        {
+            "name": "Michał Adamiak",
+            "email": "chajr@bluetree.pl",
+            "homepage": "https://github.com/chajr",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "symfony/console": "^7.4|^8.0",
+        "bluetree-service/symfony-console-style": "^0.7",
+        "bluetree-service/data": "^0.5",
+        "react/child-process": "^0.6.6",
+        "react/event-loop": "^1.5"
+    },
+    "suggest": {
+        "ext-redis": "Required for --redis transport between hashing processes"
+    },
+    "autoload": {
+        "psr-4": {
+            "BlueDuplicateDetector\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BlueDuplicateDetector\\Test\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "roave/security-advisories": "dev-latest",
+        "bluetree-service/clover-reporter": "^0.3.1"
+    },
+    "scripts": {
+        "test": "./vendor/bin/phpunit --display-warnings",
+        "coverage": "./vendor/bin/phpunit --display-warnings --coverage-clover build/logs/clover.xml",
+        "clover-report": "./vendor/bin/clover_reporter -c build/logs/clover.xml",
+        "clover-report-full": "./vendor/bin/clover_reporter -f build/logs/clover.xml",
+        "test-complete": [
+            "@coverage"
+        ]
+    }
+}
