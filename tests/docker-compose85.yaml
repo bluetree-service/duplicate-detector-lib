@@ -1,0 +1,21 @@
+services:
+  php85:
+    image: chajr/php85-dev
+    depends_on:
+      - redis85
+    networks:
+      - backend85
+    command: ${RUN_COMMAND}
+    environment:
+      - REDIS_HOST=redis85
+    volumes:
+      - ${MOUNT_POINT}
+
+  redis85:
+    image: redis:latest
+    networks:
+      - backend85
+
+networks:
+  backend85:
+    driver: bridge

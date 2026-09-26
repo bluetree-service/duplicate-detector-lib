@@ -1,0 +1,21 @@
+services:
+  php83:
+    image: chajr/php83-dev
+    depends_on:
+      - redis83
+    networks:
+      - backend83
+    command: ${RUN_COMMAND}
+    environment:
+      - REDIS_HOST=redis83
+    volumes:
+      - ${MOUNT_POINT}
+
+  redis83:
+    image: redis:latest
+    networks:
+      - backend83
+
+networks:
+  backend83:
+    driver: bridge

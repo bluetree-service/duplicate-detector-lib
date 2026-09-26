@@ -1,0 +1,21 @@
+services:
+  php82:
+    image: chajr/php82-dev
+    depends_on:
+      - redis82
+    networks:
+      - backend82
+    command: ${RUN_COMMAND}
+    environment:
+      - REDIS_HOST=redis82
+    volumes:
+      - ${MOUNT_POINT}
+
+  redis82:
+    image: redis:latest
+    networks:
+      - backend82
+
+networks:
+  backend82:
+    driver: bridge

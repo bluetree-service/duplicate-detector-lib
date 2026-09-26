@@ -1,0 +1,21 @@
+services:
+  php84:
+    image: chajr/php84-dev
+    depends_on:
+      - redis84
+    networks:
+      - backend84
+    command: ${RUN_COMMAND}
+    environment:
+      - REDIS_HOST=redis84
+    volumes:
+      - ${MOUNT_POINT}
+
+  redis84:
+    image: redis:latest
+    networks:
+      - backend84
+
+networks:
+  backend84:
+    driver: bridge
