@@ -48,5 +48,10 @@
         "test-complete": [
             "@coverage"
         ]
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        }
     }
 }
