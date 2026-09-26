@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BlueDuplicateDetector\Test;
 
 use BlueConsole\Style;
+use Symfony\Component\Console\Helper\FormatterHelper;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
@@ -90,6 +91,6 @@ final class Fixture
 
     public static function style(BufferedOutput $output): Style
     {
-        return new Style(new ArrayInput([]), $output);
+        return new Style(new ArrayInput([]), $output, new FormatterHelper());
     }
 }
