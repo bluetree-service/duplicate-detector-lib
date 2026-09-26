@@ -47,11 +47,14 @@ Constructor: command name, default sources (when no `source` argument), default 
 ## Delete policy
 
 `keep_rule` and `delete_rule`, empty values are ignored, a file matches a rule set when it matches any rule:
-`filename_is`, `filename_not_is`, `path_is`, `path_not_is` (regex), `{a,c,m}_datetime_gt` / `_lt`
-(file access/change/modify time after / before date), `permissions` (`"644"`), `owner`, `group` (uid/gid lists).
+`filename_is`, `filename_not_is`, `path_is`, `path_not_is` (regex), `{c,m}_datetime_gt` / `_lt`
+(file change/modify time after / before date; access time rules are not supported, hashing changes it), `permissions` (`"644"`), `owner`, `group` (uid/gid lists).
 
-Files matching keep rules are kept, remaining ones matching delete rules are deleted (all remaining when there are
-no delete rules). When no file matches keep rules, the first file is kept and all others are deleted.
+Files matching keep rules are kept (the first file when none matches), remaining ones matching delete rules are
+deleted (all remaining when there are no delete rules).
+
+Before any delete (`-d`, `-i`) the file is compared by full content with a kept copy, so `-c` and `-N` groups,
+the same file reached by two paths, and files changed since hashing are skipped instead of deleted.
 
 ## Library usage
 

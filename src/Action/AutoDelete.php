@@ -26,7 +26,7 @@ final class AutoDelete implements Action
         }
 
         foreach ($decision['delete'] as $file) {
-            $this->deleter->delete($file);
+            $this->deleter->delete($file, $decision['keep']);
         }
 
         $this->style->newLine();

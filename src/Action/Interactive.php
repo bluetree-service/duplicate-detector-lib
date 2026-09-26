@@ -35,8 +35,10 @@ final class Interactive implements Action
         if (\count($selected) >= \count($group->files)) {
             $this->style->warningMessage('All copies selected, nothing deleted from this group.');
         } else {
+            $kept = \array_values(\array_diff_key($group->files, \array_flip($selected)));
+
             foreach ($selected as $index) {
-                $this->deleter->delete($group->files[$index]);
+                $this->deleter->delete($group->files[$index], $kept);
             }
         }
 

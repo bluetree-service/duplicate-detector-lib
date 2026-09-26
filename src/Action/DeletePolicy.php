@@ -11,7 +11,7 @@ final class DeletePolicy
 {
     private const REGEX_RULES = ['filename_is', 'filename_not_is', 'path_is', 'path_not_is'];
     private const DATE_RULES = [
-        'a_datetime_gt', 'a_datetime_lt', 'c_datetime_gt', 'c_datetime_lt', 'm_datetime_gt', 'm_datetime_lt',
+        'c_datetime_gt', 'c_datetime_lt', 'm_datetime_gt', 'm_datetime_lt',
     ];
     private const LIST_RULES = ['owner', 'group'];
 
@@ -74,7 +74,7 @@ final class DeletePolicy
         $keep = \array_values(\array_filter($files, fn (string $file): bool => $this->matches($this->keep, $file)));
 
         if ($keep === []) {
-            return ['keep' => [$files[0]], 'delete' => \array_slice($files, 1)];
+            $keep = [$files[0]];
         }
 
         $rest = \array_values(\array_diff($files, $keep));
@@ -94,8 +94,12 @@ final class DeletePolicy
         $info = new \SplFileInfo($file);
 
         foreach ($rules as $name => $rule) {
-            if ($this->ruleMatches($name, $rule, $info)) {
-                return true;
+            try {
+                if ($this->ruleMatches($name, $rule, $info)) {
+                    return true;
+                }
+            } catch (\RuntimeException) {
+                // file vanished or became unreadable since scan, stat based rules can't match
             }
         }
 
@@ -119,7 +123,6 @@ final class DeletePolicy
     private function dateMatches(string $name, string $rule, \SplFileInfo $file): bool
     {
         $stamp = match ($name[0]) {
-            'a' => $file->getATime(),
             'c' => $file->getCTime(),
             default => $file->getMTime(),
         };
@@ -137,6 +140,12 @@ final class DeletePolicy
         $rules = \array_filter($rules, static fn ($rule): bool => $rule !== '' && $rule !== [] && $rule !== null);
 
         foreach ($rules as $name => $rule) {
+            if (\str_starts_with($name, 'a_datetime_')) {
+                throw new \InvalidArgumentException(
+                    "Delete policy rule $name is not supported: hashing reads files and changes their access time."
+                );
+            }
+
             $valid = match (true) {
                 \in_array($name, self::REGEX_RULES, true) => \is_string($rule) && @\preg_match($rule, '') !== false,
                 \in_array($name, self::DATE_RULES, true) => \is_string($rule) && \strtotime($rule) !== false,

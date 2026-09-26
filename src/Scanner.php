@@ -24,8 +24,10 @@ final class Scanner
 
         foreach ($sources as $source) {
             foreach ($this->read($source) as $file) {
-                // overlapping sources must not make a file its own duplicate
-                $unique[\realpath($file) ?: $file] ??= $file;
+                // same file under two paths (overlapping sources, hard links, case-insensitive fs, double mounts)
+                // must not become its own duplicate
+                $stat = @\stat($file);
+                $unique[$stat === false ? $file : "{$stat['dev']}:{$stat['ino']}"] ??= $file;
             }
         }
 

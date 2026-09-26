@@ -48,9 +48,35 @@ class DeletePolicyTest extends TestCase
         $this->assertSame([$this->files[2]], $decision['delete'], 'a/one.txt untouched');
     }
 
-    public function testDeleteRulesIgnoredWhenNoKeepRuleMatches(): void
+    public function testDeleteRulesApplyWhenNoKeepRuleMatches(): void
     {
         $decision = (new DeletePolicy(['path_is' => '#/none$#'], ['filename_is' => '/three/']))->decide($this->files);
+
+        $this->assertSame([$this->files[0]], $decision['keep']);
+        $this->assertSame([$this->files[2]], $decision['delete'], 'b/two.txt untouched');
+    }
+
+    public function testDeleteOnlyPolicyLimitsDeletedFiles(): void
+    {
+        $decision = (new DeletePolicy([], ['filename_is' => '/three/']))->decide($this->files);
+
+        $this->assertSame([$this->files[0]], $decision['keep']);
+        $this->assertSame([$this->files[2]], $decision['delete']);
+    }
+
+    public function testFirstFileIsKeptEvenWhenDeleteRuleMatchesIt(): void
+    {
+        $decision = (new DeletePolicy([], ['filename_is' => '/./']))->decide($this->files);
+
+        $this->assertSame([$this->files[0]], $decision['keep']);
+        $this->assertSame([$this->files[1], $this->files[2]], $decision['delete']);
+    }
+
+    public function testVanishedFileDoesNotAbort(): void
+    {
+        $files = [...$this->files, "$this->dir/vanished.txt"];
+
+        $decision = (new DeletePolicy(['owner' => [-1]], ['m_datetime_lt' => 'tomorrow']))->decide($files);
 
         $this->assertSame([$this->files[0]], $decision['keep']);
         $this->assertSame([$this->files[1], $this->files[2]], $decision['delete']);
@@ -97,6 +123,7 @@ class DeletePolicyTest extends TestCase
             'permissions' => [['permissions' => 'rwx']],
             'owner' => [['owner' => 'root']],
             'unknown' => [['size_gt' => '10']],
+            'atime, changed by hashing' => [['a_datetime_lt' => '2001-01-01']],
         ];
     }
 

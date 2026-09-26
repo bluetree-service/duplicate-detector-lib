@@ -29,7 +29,7 @@ class DeleterTest extends TestCase
     {
         $deleter = new Deleter(Fixture::style($this->output));
 
-        $this->assertTrue($deleter->delete("$this->dir/a/one.txt"));
+        $this->assertTrue($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
         $this->assertFileDoesNotExist("$this->dir/a/one.txt");
         $this->assertSame(1, $deleter->deletedFiles());
         $this->assertSame(12, $deleter->deletedSize());
@@ -39,7 +39,7 @@ class DeleterTest extends TestCase
     {
         $deleter = new Deleter(Fixture::style($this->output), null, true);
 
-        $this->assertTrue($deleter->delete("$this->dir/a/one.txt"));
+        $this->assertTrue($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
         $this->assertFileExists("$this->dir/a/one.txt");
         $this->assertSame(1, $deleter->deletedFiles());
         $this->assertStringContainsString('(test)', $this->output->fetch());
@@ -51,7 +51,7 @@ class DeleterTest extends TestCase
         $file = "$this->dir/a/one.txt";
         $real = \realpath($file);
 
-        (new Deleter(Fixture::style($this->output), $backup))->delete($file);
+        (new Deleter(Fixture::style($this->output), $backup))->delete($file, ["$this->dir/b/two.txt"]);
 
         $this->assertFileDoesNotExist($file);
         $this->assertStringEqualsFile($backup . $real, 'same content');
@@ -63,7 +63,7 @@ class DeleterTest extends TestCase
 
         $deleter = new Deleter(Fixture::style($this->output), "$this->dir/not-a-dir");
 
-        $this->assertFalse($deleter->delete("$this->dir/a/one.txt"));
+        $this->assertFalse($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
         $this->assertFileExists("$this->dir/a/one.txt");
         $this->assertSame(0, $deleter->deletedFiles());
     }
@@ -72,7 +72,42 @@ class DeleterTest extends TestCase
     {
         $deleter = new Deleter(Fixture::style($this->output), '/');
 
-        $this->assertFalse($deleter->delete("$this->dir/a/one.txt"));
+        $this->assertFalse($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
         $this->assertStringEqualsFile("$this->dir/a/one.txt", 'same content');
+    }
+
+    public function testRefusesSameFileAsKept(): void
+    {
+        \link("$this->dir/a/one.txt", "$this->dir/a/one-link.txt");
+        $deleter = new Deleter(Fixture::style($this->output));
+
+        $this->assertFalse($deleter->delete("$this->dir/a/one-link.txt", ["$this->dir/a/one.txt"]));
+        $this->assertFileExists("$this->dir/a/one-link.txt");
+    }
+
+    public function testRefusesWhenContentDiffersFromKept(): void
+    {
+        $deleter = new Deleter(Fixture::style($this->output));
+
+        $this->assertFalse($deleter->delete("$this->dir/g/prefix-2.bin", ["$this->dir/g/prefix-1.bin"]));
+        $this->assertFileExists("$this->dir/g/prefix-2.bin");
+        $this->assertStringContainsString('content differs', $this->output->fetch());
+    }
+
+    public function testRefusesWhenNoKeptCopyExists(): void
+    {
+        $deleter = new Deleter(Fixture::style($this->output));
+
+        $this->assertFalse($deleter->delete("$this->dir/a/one.txt", ["$this->dir/missing"]));
+        $this->assertFalse($deleter->delete("$this->dir/a/one.txt", []));
+        $this->assertFileExists("$this->dir/a/one.txt");
+    }
+
+    public function testMissingFileIsNotCounted(): void
+    {
+        $deleter = new Deleter(Fixture::style($this->output));
+
+        $this->assertFalse($deleter->delete("$this->dir/missing", ["$this->dir/a/one.txt"]));
+        $this->assertSame(0, $deleter->deletedFiles());
     }
 }

@@ -41,6 +41,15 @@ class ScannerTest extends TestCase
         $this->assertCount(10, $files);
     }
 
+    public function testSameInodeUnderTwoPathsIsOneFile(): void
+    {
+        \link("$this->dir/a/one.txt", "$this->dir/a/one-link.txt");
+
+        $files = (new Scanner())->scan([$this->dir]);
+
+        $this->assertCount(10, $files);
+    }
+
     public function testMinSizeFiltersSmallFiles(): void
     {
         $files = (new Scanner(minSize: 12))->scan([$this->dir]);

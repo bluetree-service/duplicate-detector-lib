@@ -92,6 +92,30 @@ class DuplicatedFilesCommandTest extends TestCase
         $this->assertFileExists("$this->dir/g/prefix-2.bin");
     }
 
+    public function testChunkWithAutoDeleteKeepsFilesWithDifferentContent(): void
+    {
+        $this->runCommand(['source' => [$this->dir], '--chunk' => '7', '--auto-delete' => true]);
+
+        $this->assertFileExists("$this->dir/g/prefix-1.bin");
+        $this->assertFileExists("$this->dir/g/prefix-2.bin");
+        $this->assertFileDoesNotExist("$this->dir/b/two.txt");
+    }
+
+    public function testCheckByNameWithAutoDeleteDeletesOnlySameContent(): void
+    {
+        $dir = Fixture::create(['a/photo-001.jpg' => '1', 'b/photo-002.jpg' => '2', 'c/photo-003.jpg' => '1']);
+
+        try {
+            $this->runCommand(['source' => [$dir], '--check-by-name' => '90', '--auto-delete' => true]);
+
+            $this->assertFileExists("$dir/a/photo-001.jpg");
+            $this->assertFileExists("$dir/b/photo-002.jpg");
+            $this->assertFileDoesNotExist("$dir/c/photo-003.jpg");
+        } finally {
+            Fixture::remove($dir);
+        }
+    }
+
     public function testAutoDeleteTestModeKeepsFiles(): void
     {
         $tester = $this->runCommand(['source' => [$this->dir], '--auto-delete' => true, '--auto-delete-test' => true]);
