@@ -1,0 +1,32 @@
+{
+    "delete_rule": {
+        "filename_is": "",
+        "filename_not_is": "",
+        "path_is": "",
+        "path_not_is": "",
+        "c_datetime_gt": "",
+        "c_datetime_lt": "",
+        "a_datetime_gt": "",
+        "a_datetime_lt": "",
+        "m_datetime_gt": "",
+        "m_datetime_lt": "",
+        "permissions": "",
+        "owner": [],
+        "group": []
+    },
+    "keep_rule": {
+        "filename_is": "",
+        "filename_not_is": "",
+        "path_is": "#/g/|/n/#",
+        "path_not_is": "",
+        "c_datetime_gt": "",
+        "c_datetime_lt": "",
+        "a_datetime_gt": "",
+        "a_datetime_lt": "",
+        "m_datetime_gt": "",
+        "m_datetime_lt": "",
+        "permissions": "",
+        "owner": [],
+        "group": []
+    }
+}
