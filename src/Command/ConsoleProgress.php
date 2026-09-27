@@ -14,6 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class ConsoleProgress implements Progress
 {
     private const FORMAT = ' %current%/%max% [%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s%';
+    private const THREAD_LABEL = '    <fg=cyan>Thread %d</>: ';
 
     private ?ProgressBar $bar = null;
 
@@ -45,7 +46,7 @@ final class ConsoleProgress implements Progress
 
         for ($thread = 0; $withThreads && $thread < $threads; $thread++) {
             $this->threadBars[$thread] = new ProgressBar($this->section());
-            $this->threadBars[$thread]->setFormat(" Thread $thread: %current%");
+            $this->threadBars[$thread]->setFormat(\sprintf(self::THREAD_LABEL, $thread) . '<fg=yellow>%current%</>');
             $this->threadBars[$thread]->start();
         }
     }
@@ -69,7 +70,9 @@ final class ConsoleProgress implements Progress
 
         if ($max !== null && $bar->getMaxSteps() !== $max) {
             $bar->setMaxSteps($max);
-            $bar->setFormat(" Thread $thread: %current%/%max% [%bar%] %percent:3s%%");
+            $bar->setFormat(
+                \sprintf(self::THREAD_LABEL, $thread) . '<fg=yellow>%current%/%max%</> [<fg=green>%bar%</>] %percent:3s%%'
+            );
         }
 
         $bar->setProgress($done);

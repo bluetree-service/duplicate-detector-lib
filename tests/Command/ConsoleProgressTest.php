@@ -70,10 +70,10 @@ class ConsoleProgressTest extends TestCase
         $progress->advance();
 
         \rewind($output->getStream());
-        $running = \stream_get_contents($output->getStream());
+        $running = \preg_replace('/\x1b\[\d+m/', '', \stream_get_contents($output->getStream()));
 
-        $this->assertMatchesRegularExpression('/Thread 0: +1\b/', $running);
-        $this->assertMatchesRegularExpression('/Thread 1: +2\/3/', $running);
+        $this->assertMatchesRegularExpression('/^    Thread 0: +1\b/m', $running);
+        $this->assertMatchesRegularExpression('/^    Thread 1: +2\/3 \[/m', $running);
 
         $progress->finish();
         $output->writeln('next');
