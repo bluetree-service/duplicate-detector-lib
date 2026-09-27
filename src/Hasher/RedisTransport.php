@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace BlueDuplicateDetector\Hasher;
 
 /**
- * Shared Redis queue: workers pop paths until the list is empty, so fast threads take more files.
+ * Redis queue per thread: files split evenly (last thread gets the same or fewer), each worker pops its own list.
  */
 final class RedisTransport implements Transport
 {
     private ?\Redis $redis = null;
     private string $session = '';
+    private int $threads = 0;
 
     public function __construct(
         private readonly string $host = '127.0.0.1',
@@ -63,8 +64,13 @@ final class RedisTransport implements Transport
         $this->redis = $redis;
         $this->session = 'dup-' . \bin2hex(\random_bytes(8));
 
-        foreach (\array_chunk($files, 1000) as $part) {
-            $this->redis->rPush("$this->session-paths", ...$part);
+        $this->threads = $threads;
+
+        // own queue per thread (same split as FileTransport), so every thread knows how many files it has
+        foreach (\array_chunk($files, \max(1, (int)\ceil(\count($files) / $threads))) as $thread => $share) {
+            foreach (\array_chunk($share, 1000) as $part) {
+                $this->redis->rPush("$this->session-paths-$thread", ...$part);
+            }
         }
     }
 
@@ -97,7 +103,8 @@ final class RedisTransport implements Transport
             return;
         }
 
-        $this->redis->del("$this->session-paths", "$this->session-hashes", "$this->session-errors");
+        $queues = \array_map(fn (int $thread): string => "$this->session-paths-$thread", \range(0, $this->threads - 1));
+        $this->redis->del("$this->session-hashes", "$this->session-errors", ...$queues);
         $this->redis->close();
         $this->redis = null;
     }

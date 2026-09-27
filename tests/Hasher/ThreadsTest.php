@@ -11,6 +11,7 @@ use BlueDuplicateDetector\Progress\NullProgress;
 use BlueDuplicateDetector\Progress\Progress;
 use BlueDuplicateDetector\Scanner;
 use BlueDuplicateDetector\Test\Fixture;
+use BlueDuplicateDetector\Test\RecordingProgress;
 use PHPUnit\Framework\TestCase;
 
 class ThreadsTest extends TestCase
@@ -114,31 +115,9 @@ class ThreadsTest extends TestCase
 
     public function testReportsEveryThreadWithItsShareOfFiles(): void
     {
-        $progress = new class implements Progress {
-            public array $start = [];
-            public array $threads = [];
-
-            public function start(int $max, int $threads = 0): void
-            {
-                $this->start = [$max, $threads];
-            }
-
-            public function advance(string $message = ''): void
-            {
-            }
-
-            public function thread(int $thread, int $done, ?int $max): void
-            {
-                $this->threads[$thread] = [$done, $max];
-            }
-
-            public function finish(): void
-            {
-            }
-        };
+        $progress = new RecordingProgress();
 
         (new Threads(3, new FileTransport($this->tmp)))->hash((new Scanner())->scan([$this->dir]), 0, $progress);
-        \ksort($progress->threads);
 
         $this->assertSame([10, 3], $progress->start);
         $this->assertSame([[4, 4], [4, 4], [2, 2]], $progress->threads);

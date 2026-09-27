@@ -8,7 +8,7 @@ declare(strict_types=1);
  * hash-worker.php file <input> <output> <chunk> <thread>
  * hash-worker.php redis <host> <port> <session> <chunk> <thread>
  *
- * stdout: one JSON line per processed file {"thread":N,"done":K,"max":M}, "max" only in file mode
+ * stdout: one JSON line per processed file {"thread":N,"done":K,"max":M}
  * on failure: message on stderr, exit code 1
  */
 
@@ -53,13 +53,14 @@ try {
         $redis = new \Redis();
         $redis->connect($host, (int)$port, 2.0);
 
-        $queue = (static function () use ($redis, $session): \Generator {
-            while (\is_string($file = $redis->lPop("$session-paths"))) {
+        $key = "$session-paths-$thread";
+        $queue = (static function () use ($redis, $key): \Generator {
+            while (\is_string($file = $redis->lPop($key))) {
                 yield $file;
             }
         })();
 
-        $result = FileHash::hashList($queue, (int)$chunk, progress((int)$thread));
+        $result = FileHash::hashList($queue, (int)$chunk, progress((int)$thread, (int)$redis->lLen($key)));
         $redis->hSet("$session-hashes", "thread-$thread", \serialize($result->hashes));
 
         if ($result->errors !== []) {

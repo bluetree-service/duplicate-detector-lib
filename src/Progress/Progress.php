@@ -14,7 +14,7 @@ interface Progress
     public function advance(string $message = ''): void;
 
     /**
-     * @param int|null $max files assigned to the thread, null when unknown (shared Redis queue)
+     * @param int|null $max files assigned to the thread, null when unknown
      */
     public function thread(int $thread, int $done, ?int $max): void;
 

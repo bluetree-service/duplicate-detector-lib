@@ -10,6 +10,7 @@ use BlueDuplicateDetector\Hasher\Threads;
 use BlueDuplicateDetector\Progress\NullProgress;
 use BlueDuplicateDetector\Scanner;
 use BlueDuplicateDetector\Test\Fixture;
+use BlueDuplicateDetector\Test\RecordingProgress;
 use PHPUnit\Framework\TestCase;
 
 class RedisTransportTest extends TestCase
@@ -91,7 +92,22 @@ class RedisTransportTest extends TestCase
             $this->assertSame($expected->errors, $actual->errors);
 
             $session = $transport->session();
-            $this->assertSame(0, $redis->exists("$session-paths", "$session-hashes", "$session-errors"));
+            $this->assertSame([], $redis->keys("$session*"));
+        } finally {
+            Fixture::remove($dir);
+        }
+    }
+
+    public function testEveryThreadGetsItsOwnShareOfFiles(): void
+    {
+        $this->requireRedis();
+        $dir = Fixture::create(Fixture::STANDARD);
+
+        try {
+            $progress = new RecordingProgress();
+            (new Threads(3, new RedisTransport($this->host)))->hash((new Scanner())->scan([$dir]), 0, $progress);
+
+            $this->assertSame([[4, 4], [4, 4], [2, 2]], $progress->threads);
         } finally {
             Fixture::remove($dir);
         }
