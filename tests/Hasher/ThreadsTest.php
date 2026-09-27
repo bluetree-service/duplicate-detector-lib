@@ -105,11 +105,43 @@ class ThreadsTest extends TestCase
     public function testReportsProgressForEveryFile(): void
     {
         $progress = $this->createMock(Progress::class);
-        $progress->expects($this->once())->method('start')->with(10);
+        $progress->expects($this->once())->method('start')->with(10, 3);
         $progress->expects($this->exactly(10))->method('advance');
         $progress->expects($this->once())->method('finish');
 
         (new Threads(3, new FileTransport($this->tmp)))->hash((new Scanner())->scan([$this->dir]), 0, $progress);
+    }
+
+    public function testReportsEveryThreadWithItsShareOfFiles(): void
+    {
+        $progress = new class implements Progress {
+            public array $start = [];
+            public array $threads = [];
+
+            public function start(int $max, int $threads = 0): void
+            {
+                $this->start = [$max, $threads];
+            }
+
+            public function advance(string $message = ''): void
+            {
+            }
+
+            public function thread(int $thread, int $done, ?int $max): void
+            {
+                $this->threads[$thread] = [$done, $max];
+            }
+
+            public function finish(): void
+            {
+            }
+        };
+
+        (new Threads(3, new FileTransport($this->tmp)))->hash((new Scanner())->scan([$this->dir]), 0, $progress);
+        \ksort($progress->threads);
+
+        $this->assertSame([10, 3], $progress->start);
+        $this->assertSame([[4, 4], [4, 4], [2, 2]], $progress->threads);
     }
 
     public function testThreadsMustBePositive(): void

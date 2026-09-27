@@ -31,7 +31,7 @@ final class Threads implements Hasher
             return new HashResult();
         }
 
-        $progress->start(\count($files));
+        $progress->start(\count($files), $this->threads);
 
         try {
             $this->transport->open($files, $this->threads);
@@ -76,6 +76,7 @@ final class Threads implements Hasher
 
                     if (isset($line['thread'], $line['done'])) {
                         $progress->advance("thread {$line['thread']}: {$line['done']}");
+                        $progress->thread($line['thread'], $line['done'], $line['max'] ?? null);
                     }
                 }
             });

@@ -8,7 +8,7 @@ declare(strict_types=1);
  * hash-worker.php file <input> <output> <chunk> <thread>
  * hash-worker.php redis <host> <port> <session> <chunk> <thread>
  *
- * stdout: one JSON line per processed file {"thread":N,"done":K}
+ * stdout: one JSON line per processed file {"thread":N,"done":K,"max":M}, "max" only in file mode
  * on failure: message on stderr, exit code 1
  */
 
@@ -21,10 +21,10 @@ foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php
     }
 }
 
-function progress(int $thread): \Closure
+function progress(int $thread, ?int $max = null): \Closure
 {
-    return static function (string $file, int $done) use ($thread): void {
-        echo \json_encode(['thread' => $thread, 'done' => $done]), "\n";
+    return static function (string $file, int $done) use ($thread, $max): void {
+        echo \json_encode(['thread' => $thread, 'done' => $done] + ($max === null ? [] : ['max' => $max])), "\n";
     };
 }
 
@@ -41,7 +41,7 @@ try {
             throw new \RuntimeException("Invalid file list: $input");
         }
 
-        $result = FileHash::hashList($files, (int)$chunk, progress((int)$thread));
+        $result = FileHash::hashList($files, (int)$chunk, progress((int)$thread, \count($files)));
         $data = \serialize(['hashes' => $result->hashes, 'errors' => $result->errors]);
 
         if (\file_put_contents($output, $data) === false) {
