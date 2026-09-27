@@ -41,7 +41,14 @@ final class ConsoleProgress implements Progress
     public function finish(): void
     {
         $this->bar?->finish();
+
+        // terminal: erase the bar, next message takes its line; plain output can't erase, just end the line
+        if ($this->output->isDecorated()) {
+            $this->bar?->clear();
+        } else {
+            $this->output->writeln('');
+        }
+
         $this->bar = null;
-        $this->output->writeln('');
     }
 }
