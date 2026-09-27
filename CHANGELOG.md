@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Redis transport: own queue per thread (files split evenly, last thread gets the same or fewer), progress bar with total for every thread.
+
 ## 0.1.1
 
 - Separate, colored progress bar for every hashing thread (files done / assigned, counter only with Redis transport).
