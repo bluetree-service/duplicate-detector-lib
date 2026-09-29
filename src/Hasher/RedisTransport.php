@@ -13,27 +13,88 @@ final class RedisTransport implements Transport
     private string $session = '';
     private int $threads = 0;
 
-    public function __construct(
-        private readonly string $host = '127.0.0.1',
-        private readonly int $port = 6379,
-    ) {
+    public const ENV = 'DUPLICATE_DETECTOR_REDIS';
+
+    public const DEFAULTS = ['host' => '127.0.0.1', 'port' => 6379, 'user' => null, 'password' => null, 'database' => 0];
+
+    /**
+     * @param array{host: string, port: int, user: ?string, password: ?string, database: int} $config
+     */
+    private function __construct(private readonly array $config)
+    {
     }
 
     /**
-     * @param string|null $dsn host[:port], null or empty = defaults
+     * @param array{host?: string, port?: int, user?: ?string, password?: ?string, database?: int} $config
+     *        missing keys take DEFAULTS
      * @throws \InvalidArgumentException
      */
-    public static function fromDsn(?string $dsn): self
+    public static function fromArray(array $config = []): self
     {
-        if ($dsn === null || $dsn === '') {
-            return new self();
+        $unknown = \array_diff_key($config, self::DEFAULTS);
+
+        if ($unknown !== []) {
+            throw new \InvalidArgumentException('Unknown Redis option: ' . \implode(', ', \array_keys($unknown)));
         }
 
-        if (!\preg_match('/^([^:]+)(?::(\d+))?$/', $dsn, $match)) {
-            throw new \InvalidArgumentException("Invalid Redis address: $dsn (expected host[:port])");
+        $config += self::DEFAULTS;
+
+        foreach (['host' => 'is_string', 'port' => 'is_int', 'database' => 'is_int'] as $key => $check) {
+            if (!$check($config[$key])) {
+                throw new \InvalidArgumentException("Redis option $key has invalid type.");
+            }
         }
 
-        return new self($match[1], isset($match[2]) ? (int)$match[2] : 6379);
+        foreach (['user', 'password'] as $key) {
+            if ($config[$key] !== null && !\is_string($config[$key])) {
+                throw new \InvalidArgumentException("Redis option $key has invalid type.");
+            }
+        }
+
+        if ($config['user'] !== null && $config['password'] === null) {
+            throw new \InvalidArgumentException('Redis option user requires password.');
+        }
+
+        return new self($config);
+    }
+
+    /**
+     * Connect, authenticate and select database; used by transport and worker.
+     *
+     * @param array{host: string, port: int, user: ?string, password: ?string, database: int} $config
+     * @throws \RuntimeException
+     */
+    public static function connect(array $config): \Redis
+    {
+        if (!\extension_loaded('redis')) {
+            throw new \RuntimeException('Redis transport requires ext-redis.');
+        }
+
+        $redis = new \Redis();
+
+        try {
+            if (!$redis->connect($config['host'], $config['port'], 2.0)) {
+                throw new \RedisException('connection refused');
+            }
+
+            $credentials = $config['user'] !== null ? [$config['user'], $config['password']] : $config['password'];
+
+            if ($credentials !== null && !$redis->auth($credentials)) {
+                throw new \RedisException('authentication failed');
+            }
+
+            if ($config['database'] !== 0 && !$redis->select($config['database'])) {
+                throw new \RedisException("unable to select database {$config['database']}");
+            }
+        } catch (\RedisException $exception) {
+            throw new \RuntimeException(
+                "Unable to connect to Redis {$config['host']}:{$config['port']}: {$exception->getMessage()}",
+                0,
+                $exception
+            );
+        }
+
+        return $redis;
     }
 
     public function session(): string
@@ -43,23 +104,7 @@ final class RedisTransport implements Transport
 
     public function open(array $files, int $threads): void
     {
-        if (!\extension_loaded('redis')) {
-            throw new \RuntimeException('Redis transport requires ext-redis.');
-        }
-
-        $redis = new \Redis();
-
-        try {
-            if (!$redis->connect($this->host, $this->port, 2.0)) {
-                throw new \RedisException('connection refused');
-            }
-        } catch (\RedisException $exception) {
-            throw new \RuntimeException(
-                "Unable to connect to Redis $this->host:$this->port: {$exception->getMessage()}",
-                0,
-                $exception
-            );
-        }
+        $redis = self::connect($this->config);
 
         $this->redis = $redis;
         $this->session = 'dup-' . \bin2hex(\random_bytes(8));
@@ -76,7 +121,15 @@ final class RedisTransport implements Transport
 
     public function workerArgs(int $thread, int $chunk): array
     {
-        return ['redis', $this->host, (string)$this->port, $this->session, (string)$chunk, (string)$thread];
+        return ['redis', $this->session, (string)$chunk, (string)$thread];
+    }
+
+    /**
+     * Connection with credentials goes through environment, arguments are visible to every user in `ps`.
+     */
+    public function workerEnv(): array
+    {
+        return [self::ENV => \json_encode($this->config, \JSON_THROW_ON_ERROR)];
     }
 
     public function collect(int $threads): HashResult

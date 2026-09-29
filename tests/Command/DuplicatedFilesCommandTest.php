@@ -150,11 +150,10 @@ class DuplicatedFilesCommandTest extends TestCase
             'interactive + auto-delete' => [['--interactive' => true, '--auto-delete' => true], 'incompatible'],
             'policy without auto-delete' => [['--delete-policy' => 'x.json'], 'require --auto-delete'],
             'test without auto-delete' => [['--auto-delete-test' => true], 'require --auto-delete'],
-            'redis without threads' => [['--redis' => null], '--thread'],
+            'redis without threads' => [['--redis' => true], '--thread'],
             'bad thread' => [['--thread' => 'abc'], '--thread'],
             'negative chunk' => [['--chunk' => '-1'], '--chunk'],
             'similarity over 100' => [['--check-by-name' => '150'], '--check-by-name'],
-            'bad redis address' => [['--thread' => '2', '--redis' => 'a:b:c'], 'Invalid Redis address'],
         ];
     }
 
@@ -165,6 +164,28 @@ class DuplicatedFilesCommandTest extends TestCase
         $this->expectExceptionMessage($message);
 
         $this->runCommand(['source' => [$this->dir]] + $input);
+    }
+
+    public function testRedisConnectionComesFromConstructor(): void
+    {
+        if (!\extension_loaded('redis')) {
+            $this->markTestSkipped('ext-redis not loaded.');
+        }
+
+        $tester = new CommandTester(new DuplicatedFilesCommand('duplicate', [], '/out', ['host' => '127.0.0.1', 'port' => 1]));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unable to connect to Redis 127.0.0.1:1');
+
+        $tester->execute(['source' => [$this->dir], '--thread' => '2', '--redis' => true]);
+    }
+
+    public function testInvalidRedisConnectionThrows(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown Redis option');
+
+        new DuplicatedFilesCommand('duplicate', [], '/out', ['hots' => 'x']);
     }
 
     public function testMissingSourceThrows(): void

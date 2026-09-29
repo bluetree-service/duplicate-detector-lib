@@ -6,13 +6,14 @@ declare(strict_types=1);
  * Hashing worker started by BlueDuplicateDetector\Hasher\Threads.
  *
  * hash-worker.php file <input> <output> <chunk> <thread>
- * hash-worker.php redis <host> <port> <session> <chunk> <thread>
+ * hash-worker.php redis <session> <chunk> <thread>, connection in env DUPLICATE_DETECTOR_REDIS (JSON)
  *
  * stdout: one JSON line per processed file {"thread":N,"done":K,"max":M}
  * on failure: message on stderr, exit code 1
  */
 
 use BlueDuplicateDetector\Hasher\FileHash;
+use BlueDuplicateDetector\Hasher\RedisTransport;
 
 foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
     if (\is_file($autoload)) {
@@ -48,10 +49,9 @@ try {
             throw new \RuntimeException("Unable to write result: $output");
         }
     } elseif ($mode === 'redis') {
-        [, , $host, $port, $session, $chunk, $thread] = $argv;
+        [, , $session, $chunk, $thread] = $argv;
 
-        $redis = new \Redis();
-        $redis->connect($host, (int)$port, 2.0);
+        $redis = RedisTransport::connect(\json_decode((string)\getenv(RedisTransport::ENV), true, 512, \JSON_THROW_ON_ERROR));
 
         $key = "$session-paths-$thread";
         $queue = (static function () use ($redis, $key): \Generator {

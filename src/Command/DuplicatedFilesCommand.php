@@ -38,12 +38,16 @@ class DuplicatedFilesCommand extends Command
 
     /**
      * @param string[] $defaultSources used when no source argument is given
+     * @param array $redis connection used with --redis, keys as RedisTransport::DEFAULTS
+     * @throws \InvalidArgumentException invalid Redis connection
      */
     public function __construct(
         string $name = 'duplicate',
         private readonly array $defaultSources = [],
         private readonly string $defaultHtmlDir = '/out',
+        private readonly array $redis = [],
     ) {
+        RedisTransport::fromArray($redis);
         parent::__construct($name);
     }
 
@@ -56,7 +60,7 @@ class DuplicatedFilesCommand extends Command
             ->addOption('check-by-name', 'N', InputOption::VALUE_REQUIRED, 'Compare file names instead of content, value is minimal similarity in percent (0-100)')
             ->addOption('progress-info', 'p', InputOption::VALUE_NONE, 'Show message on progress bar (file name or thread status)')
             ->addOption('thread', 't', InputOption::VALUE_REQUIRED, 'Number of processes calculating hashes, 0 = current process', '0')
-            ->addOption('redis', 'r', InputOption::VALUE_OPTIONAL, 'Exchange data between processes through Redis (host[:port], default 127.0.0.1:6379) instead of temporary files', false)
+            ->addOption('redis', 'r', InputOption::VALUE_NONE, 'Exchange data between processes through Redis instead of temporary files (connection set by application)')
             ->addOption('size', 'S', InputOption::VALUE_NONE, 'Hash only files which size is shared with another file (faster)')
             ->addOption('min-size', 'm', InputOption::VALUE_REQUIRED, 'Minimal size of checked files in bytes', '0')
             ->addOption('chunk', 'c', InputOption::VALUE_REQUIRED, 'Hash only first given bytes of each file (faster for large files, less accurate)', '0')
@@ -168,7 +172,7 @@ class DuplicatedFilesCommand extends Command
         $threads = $this->intOption($input, 'thread');
         $redis = $input->getOption('redis');
 
-        if ($redis !== false && $threads === 0) {
+        if ($redis && $threads === 0) {
             throw new \InvalidArgumentException('Option --redis requires --thread greater than 0.');
         }
 
@@ -185,8 +189,8 @@ class DuplicatedFilesCommand extends Command
             'by-name' => $input->getOption('check-by-name') === null ? null : $this->intOption($input, 'check-by-name', 100),
             'hasher' => match (true) {
                 $threads === 0 => new SingleProcess(),
-                $redis === false => new Threads($threads, new FileTransport()),
-                default => new Threads($threads, RedisTransport::fromDsn($redis)),
+                !$redis => new Threads($threads, new FileTransport()),
+                default => new Threads($threads, RedisTransport::fromArray($this->redis)),
             },
             'policy' => $input->getOption('delete-policy') !== null
                 ? DeletePolicy::fromFile($input->getOption('delete-policy'))

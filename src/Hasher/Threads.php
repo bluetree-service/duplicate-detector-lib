@@ -63,7 +63,8 @@ final class Threads implements Hasher
             $stderr[$thread] = '';
             $args = [$this->php, self::WORKER, ...$this->transport->workerArgs($thread, $chunk)];
 
-            $process = new Process(\implode(' ', \array_map('escapeshellarg', $args)));
+            $env = $this->transport->workerEnv();
+            $process = new Process(\implode(' ', \array_map('escapeshellarg', $args)), null, $env === [] ? null : $env + \getenv());
             $process->start($loop);
 
             // stdout chunks may split or join lines, so buffer until "\n"

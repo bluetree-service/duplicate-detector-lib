@@ -21,6 +21,11 @@ interface Transport
     public function workerArgs(int $thread, int $chunk): array;
 
     /**
+     * @return array<string, string> extra environment variables of worker process
+     */
+    public function workerEnv(): array;
+
+    /**
      * @throws \RuntimeException when result of any thread is missing
      */
     public function collect(int $threads): HashResult;

@@ -20,16 +20,22 @@ use BlueDuplicateDetector\Command\DuplicatedFilesCommand;
 use Symfony\Component\Console\Application;
 
 $application = new Application();
-$application->addCommand(new DuplicatedFilesCommand('duplicate', ['/duplicates'], '/out'));
+$application->addCommand(new DuplicatedFilesCommand('duplicate', ['/duplicates'], '/out', [
+    'host' => 'redis',
+    'password' => \getenv('REDIS_PASSWORD') ?: null,
+]));
 $application->run();
 ```
 
-Constructor: command name, default sources (when no `source` argument), default HTML directory (`-H` without value).
+Constructor: command name, default sources (when no `source` argument), default HTML directory (`-H` without value),
+Redis connection used with `-r`: `host` (`127.0.0.1`), `port` (`6379`), `user` (ACL, requires `password`), `password`,
+`database` (`0`). Missing keys take defaults, unknown keys throw. Workers get the connection through environment
+variable, never through process arguments.
 
 | Option | Description |
 |---|---|
 | `-t N` | N worker processes (0 = current process) |
-| `-r [host:port]` | exchange data between workers through Redis (default `127.0.0.1:6379`), requires `-t` |
+| `-r` | exchange data between workers through Redis (connection from constructor), requires `-t` |
 | `-S` | hash only files with non unique size |
 | `-m BYTES` | minimal file size |
 | `-s` | skip empty files |
@@ -60,11 +66,12 @@ the same file reached by two paths, and files changed since hashing are skipped 
 
 ```php
 use BlueDuplicateDetector\{Scanner, Grouper};
-use BlueDuplicateDetector\Hasher\{Threads, FileTransport};
+use BlueDuplicateDetector\Hasher\{Threads, FileTransport, RedisTransport};
 use BlueDuplicateDetector\Progress\NullProgress;
 
 $files = (new Scanner(minSize: 1, sameSizeOnly: true))->scan(['/data']);
 $result = (new Threads(4, new FileTransport()))->hash($files, 0, new NullProgress());
+// or: new Threads(4, RedisTransport::fromArray(['host' => 'redis', 'password' => 'secret']))
 $groups = (new Grouper())->group($result->hashes); // DuplicateGroup[]: key, files, sizes, size
 ```
 

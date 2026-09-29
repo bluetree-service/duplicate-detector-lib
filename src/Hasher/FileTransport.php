@@ -38,6 +38,11 @@ final class FileTransport implements Transport
         return ['file', $this->input($thread), $this->output($thread), (string)$chunk, (string)$thread];
     }
 
+    public function workerEnv(): array
+    {
+        return [];
+    }
+
     public function collect(int $threads): HashResult
     {
         $result = new HashResult();

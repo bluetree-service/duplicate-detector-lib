@@ -38,18 +38,38 @@ class RedisTransportTest extends TestCase
         }
     }
 
-    public function testFromDsn(): void
+    public function testFromArrayFillsDefaults(): void
     {
-        $this->assertEquals(new RedisTransport(), RedisTransport::fromDsn(null));
-        $this->assertEquals(new RedisTransport('redis'), RedisTransport::fromDsn('redis'));
-        $this->assertEquals(new RedisTransport('10.0.0.1', 6378), RedisTransport::fromDsn('10.0.0.1:6378'));
+        $this->assertEquals(
+            RedisTransport::fromArray(['host' => '127.0.0.1', 'port' => 6379, 'user' => null, 'password' => null, 'database' => 0]),
+            RedisTransport::fromArray()
+        );
     }
 
-    public function testInvalidDsnThrows(): void
+    public static function invalidConfig(): array
+    {
+        return [
+            'unknown key' => [['pass' => 'x'], 'Unknown Redis option: pass'],
+            'port as string' => [['port' => '6379'], 'port'],
+            'user without password' => [['user' => 'dup'], 'password'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidConfig')]
+    public function testInvalidConfigThrows(array $config, string $message): void
     {
         $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
 
-        RedisTransport::fromDsn('host:port:x');
+        RedisTransport::fromArray($config);
+    }
+
+    public function testPasswordGoesToWorkerEnvironmentNotArguments(): void
+    {
+        $transport = RedisTransport::fromArray(['user' => 'dup', 'password' => 'secret']);
+
+        $this->assertStringNotContainsString('secret', \implode(' ', $transport->workerArgs(0, 0)));
+        $this->assertStringContainsString('secret', $transport->workerEnv()[RedisTransport::ENV]);
     }
 
     public function testMissingExtensionThrows(): void
@@ -61,7 +81,7 @@ class RedisTransportTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('ext-redis');
 
-        (new RedisTransport())->open(['/x'], 1);
+        RedisTransport::fromArray()->open(['/x'], 1);
     }
 
     public function testUnreachableRedisThrows(): void
@@ -71,9 +91,70 @@ class RedisTransportTest extends TestCase
         }
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Unable to connect to Redis');
+        $this->expectExceptionMessage('Unable to connect to Redis 127.0.0.1:1');
 
-        (new RedisTransport('127.0.0.1', 1))->open(['/x'], 1);
+        RedisTransport::fromArray(['port' => 1])->open(['/x'], 1);
+    }
+
+    /**
+     * Temporary ACL user, removed after the test.
+     */
+    private function withAclUser(\Redis $redis, \Closure $test): void
+    {
+        try {
+            $redis->rawCommand('ACL', 'SETUSER', 'dup-test', 'on', '>secret', '~*', '+@all');
+        } catch (\RedisException $exception) {
+            $this->markTestSkipped('Redis ACL not available: ' . $exception->getMessage());
+        }
+
+        try {
+            $test();
+        } finally {
+            $redis->rawCommand('ACL', 'DELUSER', 'dup-test');
+        }
+    }
+
+    public function testAuthenticatesWithUserAndPassword(): void
+    {
+        $redis = $this->requireRedis();
+
+        $this->withAclUser($redis, function (): void {
+            $client = RedisTransport::connect(
+                ['host' => $this->host, 'port' => 6379, 'user' => 'dup-test', 'password' => 'secret', 'database' => 0]
+            );
+
+            $this->assertSame('dup-test', $client->rawCommand('ACL', 'WHOAMI'));
+        });
+    }
+
+    public function testWrongPasswordThrows(): void
+    {
+        $redis = $this->requireRedis();
+
+        $this->withAclUser($redis, function (): void {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage("Unable to connect to Redis $this->host:6379");
+
+            RedisTransport::fromArray(['host' => $this->host, 'user' => 'dup-test', 'password' => 'wrong'])->open(['/x'], 1);
+        });
+    }
+
+    public function testWorkersUseConfiguredDatabase(): void
+    {
+        $redis = $this->requireRedis();
+        $dir = Fixture::create(Fixture::STANDARD);
+
+        try {
+            $files = (new Scanner())->scan([$dir]);
+            $transport = RedisTransport::fromArray(['host' => $this->host, 'database' => 3]);
+
+            $expected = (new SingleProcess())->hash($files, 0, new NullProgress());
+            $actual = (new Threads(2, $transport))->hash($files, 0, new NullProgress());
+
+            $this->assertSame(Fixture::normalize($expected->hashes), Fixture::normalize($actual->hashes));
+        } finally {
+            Fixture::remove($dir);
+        }
     }
 
     public function testSameResultAsSingleProcessAndKeysRemoved(): void
@@ -83,7 +164,7 @@ class RedisTransportTest extends TestCase
 
         try {
             $files = [...(new Scanner())->scan([$dir]), "$dir/missing"];
-            $transport = new RedisTransport($this->host);
+            $transport = RedisTransport::fromArray(['host' => $this->host]);
 
             $expected = (new SingleProcess())->hash($files, 0, new NullProgress());
             $actual = (new Threads(3, $transport))->hash($files, 0, new NullProgress());
@@ -105,7 +186,7 @@ class RedisTransportTest extends TestCase
 
         try {
             $progress = new RecordingProgress();
-            (new Threads(3, new RedisTransport($this->host)))->hash((new Scanner())->scan([$dir]), 0, $progress);
+            (new Threads(3, RedisTransport::fromArray(['host' => $this->host])))->hash((new Scanner())->scan([$dir]), 0, $progress);
 
             $this->assertSame([[4, 4], [4, 4], [2, 2]], $progress->threads);
         } finally {
