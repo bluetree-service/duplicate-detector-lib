@@ -19,13 +19,25 @@ final class ListOnly implements Action
 
     public function handle(DuplicateGroup $group): void
     {
-        foreach ($group->files as $file) {
-            $size = $this->withSize ? ' (' . Formats::dataSize($group->sizes[$file]) . ')' : '';
-            $this->style->writeln(OutputFormatter::escape($file) . $size);
+        // paths only (-l) stay plain for piping
+        if (!$this->withSize) {
+            foreach ($group->files as $file) {
+                $this->style->writeln(OutputFormatter::escape($file));
+            }
+
+            return;
         }
 
-        if ($this->withSize) {
-            $this->style->newLine();
+        $this->style->writeln('<fg=gray>#' . OutputFormatter::escape($group->key) . '</>');
+
+        // first file is the one kept by default delete policy
+        foreach ($group->files as $index => $file) {
+            $this->style->writeln(
+                '<fg=' . ($index === 0 ? 'green' : 'yellow') . '>' . OutputFormatter::escape($file) . '</>'
+                . ' (' . Formats::dataSize($group->sizes[$file]) . ')'
+            );
         }
+
+        $this->style->newLine();
     }
 }
