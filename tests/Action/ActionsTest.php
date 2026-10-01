@@ -56,7 +56,20 @@ class ActionsTest extends TestCase
     {
         (new ListOnly(Fixture::style($this->output), false))->handle($this->group());
 
-        $this->assertStringNotContainsString('B)', $this->output->fetch());
+        $text = $this->output->fetch();
+        $this->assertStringNotContainsString('B)', $text);
+        $this->assertStringNotContainsString('#h', $text);
+    }
+
+    public function testListOnlyShowsKeyAndColorsFirstFile(): void
+    {
+        $output = new BufferedOutput(decorated: true);
+        (new ListOnly(Fixture::style($output)))->handle($this->group());
+
+        $text = $output->fetch();
+        $this->assertStringContainsString('#h', $text);
+        $this->assertMatchesRegularExpression("~\\e\\[32m[^\\e]*$this->dir/a/one\\.txt~", $text);
+        $this->assertMatchesRegularExpression("~\\e\\[33m[^\\e]*$this->dir/b/two\\.txt~", $text);
     }
 
     public function testInteractiveDeletesFileShownAtSelectedPosition(): void
@@ -72,6 +85,7 @@ class ActionsTest extends TestCase
         (new Interactive($style, $select, new Deleter($style)))->handle($group);
 
         $this->assertFileDoesNotExist("$this->dir/b/two.txt");
+        $this->assertStringContainsString('#h', $this->output->fetch());
         $this->assertFileExists("$this->dir/a/one.txt");
         $this->assertFileExists("$this->dir/b/c/three.txt");
     }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Default list and interactive mode show group hash (or name with `-n`) above each group.
+- Default list colors first file (kept by default policy) green and other copies yellow; `-l` output stays plain.
+
 ## 0.4.0
 
 - `-L` / `--link hard|soft` replaces deleted file with link to kept copy (`-d`, `-i`); failed link keeps the file.

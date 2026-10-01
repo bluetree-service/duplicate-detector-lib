@@ -23,6 +23,7 @@ final class Interactive implements Action
     public function handle(DuplicateGroup $group): void
     {
         $this->style->newLine();
+        $this->style->writeln('<fg=gray>#' . OutputFormatter::escape($group->key) . '</>');
 
         // options are built from $group->files in order, so selected index = index in $group->files
         $options = \array_map(
