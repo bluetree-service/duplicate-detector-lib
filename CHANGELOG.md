@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- `-L` / `--link hard|soft` replaces deleted file with link to kept copy (`-d`, `-i`); failed link keeps the file.
+- `-k` / `--keep-selected` in interactive mode: selected files are kept, others deleted.
+- `Deleter` constructor: `link` parameter, `Interactive` constructor: `keepSelected` parameter.
+
 ## 0.3.0
 
 - `-x` / `--exclude` skips directories matching pattern (name or full path), `-I` / `--include` checks only files

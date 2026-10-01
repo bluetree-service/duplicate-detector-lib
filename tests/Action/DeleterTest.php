@@ -103,6 +103,55 @@ class DeleterTest extends TestCase
         $this->assertFileExists("$this->dir/a/one.txt");
     }
 
+    public function testHardLinkReplacesFile(): void
+    {
+        $deleter = new Deleter(Fixture::style($this->output), link: 'hard');
+
+        $this->assertTrue($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
+        $this->assertFalse(\is_link("$this->dir/a/one.txt"));
+        $this->assertSame(\fileinode("$this->dir/b/two.txt"), \fileinode("$this->dir/a/one.txt"));
+        $this->assertSame(1, $deleter->deletedFiles());
+        $this->assertStringContainsString('Linked', $this->output->fetch());
+    }
+
+    public function testSoftLinkPointsToKeptCopy(): void
+    {
+        $deleter = new Deleter(Fixture::style($this->output), link: 'soft');
+
+        $this->assertTrue($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
+        $this->assertTrue(\is_link("$this->dir/a/one.txt"));
+        $this->assertSame(\realpath("$this->dir/b/two.txt"), \readlink("$this->dir/a/one.txt"));
+    }
+
+    public function testDryRunWithLinkChangesNothing(): void
+    {
+        $deleter = new Deleter(Fixture::style($this->output), null, true, 'hard');
+
+        $this->assertTrue($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
+        $this->assertNotSame(\fileinode("$this->dir/b/two.txt"), \fileinode("$this->dir/a/one.txt"));
+        $this->assertStringContainsString('(test)', $this->output->fetch());
+    }
+
+    public function testFailedLinkKeepsFile(): void
+    {
+        if (\function_exists('posix_getuid') && \posix_getuid() === 0) {
+            $this->markTestSkipped('root ignores directory permissions.');
+        }
+
+        \chmod("$this->dir/a", 0555);
+
+        try {
+            $deleter = new Deleter(Fixture::style($this->output), link: 'soft');
+
+            $this->assertFalse($deleter->delete("$this->dir/a/one.txt", ["$this->dir/b/two.txt"]));
+            $this->assertFalse(\is_link("$this->dir/a/one.txt"));
+            $this->assertStringEqualsFile("$this->dir/a/one.txt", 'same content');
+            $this->assertSame(0, $deleter->deletedFiles());
+        } finally {
+            \chmod("$this->dir/a", 0777);
+        }
+    }
+
     public function testMissingFileIsNotCounted(): void
     {
         $deleter = new Deleter(Fixture::style($this->output));

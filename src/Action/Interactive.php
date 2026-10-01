@@ -16,6 +16,7 @@ final class Interactive implements Action
         private readonly Style $style,
         private readonly MultiSelect $select,
         private readonly Deleter $deleter,
+        private readonly bool $keepSelected = false,
     ) {
     }
 
@@ -30,15 +31,17 @@ final class Interactive implements Action
             $group->files
         );
 
-        $selected = \array_keys($this->select->renderMultiSelect($options));
+        $selected = \array_intersect_key($group->files, $this->select->renderMultiSelect($options));
+        $others = \array_diff_key($group->files, $selected);
+        [$kept, $deleted] = $this->keepSelected ? [$selected, $others] : [$others, $selected];
 
-        if (\count($selected) >= \count($group->files)) {
-            $this->style->warningMessage('All copies selected, nothing deleted from this group.');
+        if ($kept === []) {
+            $this->style->warningMessage(
+                ($this->keepSelected ? 'No copy selected to keep' : 'All copies selected') . ', nothing deleted from this group.'
+            );
         } else {
-            $kept = \array_values(\array_diff_key($group->files, \array_flip($selected)));
-
-            foreach ($selected as $index) {
-                $this->deleter->delete($group->files[$index], $kept);
+            foreach ($deleted as $file) {
+                $this->deleter->delete($file, \array_values($kept));
             }
         }
 

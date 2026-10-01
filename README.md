@@ -46,9 +46,11 @@ variable, never through process arguments.
 | `-N PERCENT` | compare file names (`similar_text`) instead of content |
 | `-l` | list paths only |
 | `-i` | interactive delete (selecting all copies of a group is refused) |
+| `-k` | with `-i`: selected files are kept, others deleted (selecting none is refused) |
 | `-d` | automatic delete, keeps first file (sorted by directory, then name) or files matching keep rules |
 | `-D FILE` | delete policy JSON (`-E` prints example) |
 | `-b DIR` | copy deleted files to DIR + absolute path before delete; failed copy keeps the file |
+| `-L hard\|soft` | with `-d` / `-i`: replace deleted file with hard or symbolic (absolute) link to kept copy |
 | `-T` | test automatic delete, nothing is deleted |
 | `-H [DIR]` | HTML report, `index.html` + `duplicates-NNNN.html` (100 duplications per page) |
 | `-p` | show file name / thread status on progress bar |
@@ -67,6 +69,10 @@ deleted (all remaining when there are no delete rules).
 
 Before any delete (`-d`, `-i`) the file is compared by full content with a kept copy, so `-c` and `-N` groups,
 the same file reached by two paths, and files changed since hashing are skipped instead of deleted.
+
+With `-L` the link is created under a temporary name next to the file and renamed over it, so when linking fails
+(hard link across file systems, read only directory) the file stays untouched. Linked paths share inode with the
+kept copy, next scan counts them as one file.
 
 ## Library usage
 

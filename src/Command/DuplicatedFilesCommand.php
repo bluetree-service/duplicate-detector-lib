@@ -55,7 +55,7 @@ class DuplicatedFilesCommand extends Command
     {
         $this->setDescription('Search files duplication and make some action on it.')
             ->addArgument('source', InputArgument::IS_ARRAY, 'Directories or files to check')
-            ->addOption('interactive', 'i', InputOption::VALUE_NONE, 'Show multi-checkbox with duplicated files, selected will be deleted')
+            ->addOption('interactive', 'i', InputOption::VALUE_NONE, 'Show multi-checkbox with duplicated files, selected will be deleted (kept with --keep-selected)')
             ->addOption('skip-empty', 's', InputOption::VALUE_NONE, 'Skip empty files')
             ->addOption('exclude', 'x', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Skip directories matching pattern (name or full path, e.g. .git, "*/cache*"), repeatable')
             ->addOption('include', 'I', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Check only files with name matching pattern (e.g. "*.jpg"), repeatable')
@@ -72,6 +72,8 @@ class DuplicatedFilesCommand extends Command
             ->addOption('delete-backup', 'b', InputOption::VALUE_REQUIRED, 'Copy deleted files into given directory (keeping absolute path) before delete')
             ->addOption('delete-policy', 'D', InputOption::VALUE_REQUIRED, 'JSON file with keep/delete rules for automatic delete')
             ->addOption('delete-policy-example', 'E', InputOption::VALUE_NONE, 'Print example delete policy file')
+            ->addOption('link', 'L', InputOption::VALUE_REQUIRED, 'Replace deleted file with link to kept copy: hard or soft (requires --auto-delete or --interactive)')
+            ->addOption('keep-selected', 'k', InputOption::VALUE_NONE, 'Interactive mode: selected files are kept, others deleted')
             ->addOption('auto-delete-test', 'T', InputOption::VALUE_NONE, 'Test automatic delete: apply rules and backup, but do not delete files')
             ->addOption('html', 'H', InputOption::VALUE_OPTIONAL, "Save duplications as HTML pages (index.html + pages by " . self::HTML_PAGE_SIZE . " duplications) in given directory, default {$this->defaultHtmlDir}", false);
     }
@@ -175,6 +177,18 @@ class DuplicatedFilesCommand extends Command
             );
         }
 
+        if ($input->getOption('link') !== null && !$input->getOption('auto-delete') && !$input->getOption('interactive')) {
+            throw new \InvalidArgumentException('Option --link requires --auto-delete or --interactive.');
+        }
+
+        if (!\in_array($input->getOption('link'), Deleter::LINKS, true)) {
+            throw new \InvalidArgumentException('Option --link must be hard or soft.');
+        }
+
+        if ($input->getOption('keep-selected') && !$input->getOption('interactive')) {
+            throw new \InvalidArgumentException('Option --keep-selected requires --interactive.');
+        }
+
         $threads = $this->intOption($input, 'thread');
         $redis = $input->getOption('redis');
 
@@ -225,13 +239,19 @@ class DuplicatedFilesCommand extends Command
     private function action(InputInterface $input, Style $style, DeletePolicy $policy): array
     {
         if ($input->getOption('interactive')) {
-            $deleter = new Deleter($style);
+            $deleter = new Deleter($style, link: $input->getOption('link'));
+            $select = (new MultiSelect($style))->toggleShowInfo(false);
 
-            return [new Interactive($style, (new MultiSelect($style))->toggleShowInfo(false), $deleter), $deleter];
+            return [new Interactive($style, $select, $deleter, (bool)$input->getOption('keep-selected')), $deleter];
         }
 
         if ($input->getOption('auto-delete')) {
-            $deleter = new Deleter($style, $input->getOption('delete-backup'), (bool)$input->getOption('auto-delete-test'));
+            $deleter = new Deleter(
+                $style,
+                $input->getOption('delete-backup'),
+                (bool)$input->getOption('auto-delete-test'),
+                $input->getOption('link')
+            );
 
             return [new AutoDelete($style, $policy, $deleter), $deleter];
         }
