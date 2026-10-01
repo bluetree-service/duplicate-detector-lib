@@ -131,6 +131,15 @@ class DuplicatedFilesCommandTest extends TestCase
         }
     }
 
+    public function testAutoDeleteWithHardLinkKeepsPathsAsOneFile(): void
+    {
+        $this->runCommand(['source' => [$this->dir], '--auto-delete' => true, '--link' => 'hard', '--skip-empty' => true]);
+
+        $inode = \fileinode("$this->dir/a/one.txt");
+        $this->assertSame($inode, \fileinode("$this->dir/b/two.txt"));
+        $this->assertSame($inode, \fileinode("$this->dir/b/c/three.txt"));
+    }
+
     public function testAutoDeleteTestModeKeepsFiles(): void
     {
         $tester = $this->runCommand(['source' => [$this->dir], '--auto-delete' => true, '--auto-delete-test' => true]);
@@ -169,6 +178,9 @@ class DuplicatedFilesCommandTest extends TestCase
             'bad thread' => [['--thread' => 'abc'], '--thread'],
             'negative chunk' => [['--chunk' => '-1'], '--chunk'],
             'similarity over 100' => [['--check-by-name' => '150'], '--check-by-name'],
+            'link without delete' => [['--link' => 'hard'], 'requires --auto-delete or --interactive'],
+            'unknown link type' => [['--link' => 'x', '--auto-delete' => true], 'Option --link must be hard or soft'],
+            'keep-selected without interactive' => [['--keep-selected' => true], 'requires --interactive'],
         ];
     }
 

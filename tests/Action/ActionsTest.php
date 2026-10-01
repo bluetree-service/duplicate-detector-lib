@@ -90,6 +90,33 @@ class ActionsTest extends TestCase
         $this->assertStringContainsString('All copies selected', $this->output->fetch());
     }
 
+    public function testInteractiveKeepSelectedDeletesOthers(): void
+    {
+        $select = $this->createMock(MultiSelect::class);
+        $select->method('renderMultiSelect')->willReturn([0 => true]);
+
+        $style = Fixture::style($this->output);
+        (new Interactive($style, $select, new Deleter($style), true))->handle($this->group());
+
+        $this->assertFileExists("$this->dir/a/one.txt");
+        $this->assertFileDoesNotExist("$this->dir/b/two.txt");
+        $this->assertFileDoesNotExist("$this->dir/b/c/three.txt");
+        $this->assertFileDoesNotExist("$this->dir/z/<info>tag.txt");
+    }
+
+    public function testInteractiveKeepSelectedWithNothingSelectedDeletesNothing(): void
+    {
+        $select = $this->createMock(MultiSelect::class);
+        $select->method('renderMultiSelect')->willReturn([]);
+
+        $style = Fixture::style($this->output);
+        $deleter = new Deleter($style);
+        (new Interactive($style, $select, $deleter, true))->handle($this->group());
+
+        $this->assertSame(0, $deleter->deletedFiles());
+        $this->assertStringContainsString('No copy selected to keep', $this->output->fetch());
+    }
+
     public function testAutoDeleteKeepsFirstSortedFile(): void
     {
         $style = Fixture::style($this->output);
