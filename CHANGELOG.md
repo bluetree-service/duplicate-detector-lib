@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- `-x` / `--exclude` skips directories matching pattern (name or full path), `-I` / `--include` checks only files
+  with name matching pattern, both repeatable; `-C` / `--ignore-case` makes them case insensitive.
+- `Scanner` constructor: `exclude`, `include`, `ignoreCase` parameters.
+
 ## 0.2.0
 
 - `-r` / `--redis` is a flag only, Redis connection is given to `DuplicatedFilesCommand` constructor as array

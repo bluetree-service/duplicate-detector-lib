@@ -57,6 +57,9 @@ class DuplicatedFilesCommand extends Command
             ->addArgument('source', InputArgument::IS_ARRAY, 'Directories or files to check')
             ->addOption('interactive', 'i', InputOption::VALUE_NONE, 'Show multi-checkbox with duplicated files, selected will be deleted')
             ->addOption('skip-empty', 's', InputOption::VALUE_NONE, 'Skip empty files')
+            ->addOption('exclude', 'x', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Skip directories matching pattern (name or full path, e.g. .git, "*/cache*"), repeatable')
+            ->addOption('include', 'I', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Check only files with name matching pattern (e.g. "*.jpg"), repeatable')
+            ->addOption('ignore-case', 'C', InputOption::VALUE_NONE, 'Case insensitive --exclude and --include patterns')
             ->addOption('check-by-name', 'N', InputOption::VALUE_REQUIRED, 'Compare file names instead of content, value is minimal similarity in percent (0-100)')
             ->addOption('progress-info', 'p', InputOption::VALUE_NONE, 'Show message on progress bar (file name or thread status)')
             ->addOption('thread', 't', InputOption::VALUE_REQUIRED, 'Number of processes calculating hashes, 0 = current process', '0')
@@ -90,7 +93,10 @@ class DuplicatedFilesCommand extends Command
         $files = (new Scanner(
             $options['min-size'],
             (bool)$input->getOption('size'),
-            (bool)$input->getOption('skip-empty')
+            (bool)$input->getOption('skip-empty'),
+            $input->getOption('exclude'),
+            $input->getOption('include'),
+            (bool)$input->getOption('ignore-case')
         ))->scan($options['sources']);
 
         $style->infoMessage('Files to check: <info>' . \count($files) . '</>');
