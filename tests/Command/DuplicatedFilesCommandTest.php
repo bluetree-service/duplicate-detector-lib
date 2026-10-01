@@ -40,6 +40,21 @@ class DuplicatedFilesCommandTest extends TestCase
         $this->assertStringContainsString('Duplicated files: 7', $tester->getDisplay());
     }
 
+    public function testExcludeAndIncludeReachScanner(): void
+    {
+        $tester = $this->runCommand([
+            'source' => [$this->dir],
+            '--list-only' => true,
+            '--exclude' => ['C'],
+            '--include' => ['*.TXT'],
+            '--ignore-case' => true,
+        ]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('Files to check: 5', $tester->getDisplay());
+        $this->assertStringNotContainsString("$this->dir/b/c/three.txt", $tester->getDisplay());
+    }
+
     public function testThreadsGiveSameSummary(): void
     {
         $tester = $this->runCommand(['source' => [$this->dir], '--thread' => '3', '--skip-empty' => true]);

@@ -39,6 +39,9 @@ variable, never through process arguments.
 | `-S` | hash only files with non unique size |
 | `-m BYTES` | minimal file size |
 | `-s` | skip empty files |
+| `-x PATTERN` | skip directories matching pattern (`fnmatch`, name or full path: `.git`, `*/cache*`), repeatable |
+| `-I PATTERN` | check only files with name matching pattern (`*.jpg`), repeatable |
+| `-C` | case insensitive `-x` / `-I` (case sensitive by default) |
 | `-c BYTES` | hash only first BYTES of each file |
 | `-N PERCENT` | compare file names (`similar_text`) instead of content |
 | `-l` | list paths only |
@@ -49,6 +52,9 @@ variable, never through process arguments.
 | `-T` | test automatic delete, nothing is deleted |
 | `-H [DIR]` | HTML report, `index.html` + `duplicates-NNNN.html` (100 duplications per page) |
 | `-p` | show file name / thread status on progress bar |
+
+`-x` and `-I` apply to directory scan only, a file given as `source` is always checked. Excluded directories are not
+read at all, so on big trees they also save time and memory.
 
 ## Delete policy
 
@@ -69,7 +75,7 @@ use BlueDuplicateDetector\{Scanner, Grouper};
 use BlueDuplicateDetector\Hasher\{Threads, FileTransport, RedisTransport};
 use BlueDuplicateDetector\Progress\NullProgress;
 
-$files = (new Scanner(minSize: 1, sameSizeOnly: true))->scan(['/data']);
+$files = (new Scanner(minSize: 1, sameSizeOnly: true, exclude: ['.git'], include: ['*.jpg']))->scan(['/data']);
 $result = (new Threads(4, new FileTransport()))->hash($files, 0, new NullProgress());
 // or: new Threads(4, RedisTransport::fromArray(['host' => 'redis', 'password' => 'secret']))
 $groups = (new Grouper())->group($result->hashes); // DuplicateGroup[]: key, files, sizes, size

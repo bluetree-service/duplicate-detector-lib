@@ -84,6 +84,51 @@ class ScannerTest extends TestCase
         }
     }
 
+    public function testExcludeSkipsDirectoryByNameOnAnyLevel(): void
+    {
+        $this->assertCount(9, (new Scanner(exclude: ['c']))->scan([$this->dir]));
+        $this->assertCount(8, (new Scanner(exclude: ['b']))->scan([$this->dir]));
+    }
+
+    public function testExcludeSkipsDirectoryByPath(): void
+    {
+        $files = (new Scanner(exclude: ["$this->dir/b/c"]))->scan([$this->dir]);
+
+        $this->assertCount(9, $files);
+        $this->assertContains("$this->dir/b/two.txt", $files);
+        $this->assertCount(8, (new Scanner(exclude: ['*/b']))->scan([$this->dir]));
+    }
+
+    public function testExcludeDoesNotMatchFiles(): void
+    {
+        $this->assertCount(10, (new Scanner(exclude: ['one.txt']))->scan([$this->dir]));
+    }
+
+    public function testExcludeIsCaseSensitiveUnlessIgnoreCase(): void
+    {
+        $this->assertCount(10, (new Scanner(exclude: ['B']))->scan([$this->dir]));
+        $this->assertCount(8, (new Scanner(exclude: ['B'], ignoreCase: true))->scan([$this->dir]));
+    }
+
+    public function testIncludeKeepsOnlyMatchingFileNames(): void
+    {
+        $this->assertCount(6, (new Scanner(include: ['*.txt']))->scan([$this->dir]));
+        $this->assertCount(8, (new Scanner(include: ['*.bin', '*.txt']))->scan([$this->dir]));
+    }
+
+    public function testIncludeIsCaseSensitiveUnlessIgnoreCase(): void
+    {
+        $this->assertCount(0, (new Scanner(include: ['*.TXT']))->scan([$this->dir]));
+        $this->assertCount(6, (new Scanner(include: ['*.TXT'], ignoreCase: true))->scan([$this->dir]));
+    }
+
+    public function testFiltersDoNotApplyToFileGivenAsSource(): void
+    {
+        $scanner = new Scanner(exclude: ['a'], include: ['*.bin']);
+
+        $this->assertSame(["$this->dir/a/one.txt"], $scanner->scan(["$this->dir/a/one.txt"]));
+    }
+
     public function testMissingSourceThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
