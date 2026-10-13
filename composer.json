@@ -17,7 +17,7 @@
         "php": "^8.2",
         "ext-json": "*",
         "symfony/console": "^7.4|^8.0",
-        "bluetree-service/symfony-console-style": "^0.7",
+        "bluetree-service/symfony-console-style": "^0.7|^0.8",
         "bluetree-service/data": "^0.5",
         "react/child-process": "^0.6.6",
         "react/event-loop": "^1.5"

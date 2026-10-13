@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Allows `bluetree-service/symfony-console-style` 0.8.
+
 ## 0.5.0
 
 - Default list and interactive mode show group hash (or name with `-n`) above each group.

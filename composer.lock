@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "87617d184b1cc516546368696cf15f22",
+    "content-hash": "a92aa9a518c0ba777703cd7de7051f9e",
     "packages": [
         {
             "name": "bluetree-service/data",
@@ -64,16 +64,16 @@
         },
         {
             "name": "bluetree-service/symfony-console-style",
-            "version": "0.7.0.0",
+            "version": "0.8.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/bluetree-service/symfony-console-style.git",
-                "reference": "3d863ba5040ae70609f4bcbe9d7aeea1ef8ae421"
+                "reference": "cb6dd16981fa22c164b5fbb0a9e6adf281e52944"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/bluetree-service/symfony-console-style/zipball/3d863ba5040ae70609f4bcbe9d7aeea1ef8ae421",
-                "reference": "3d863ba5040ae70609f4bcbe9d7aeea1ef8ae421",
+                "url": "https://api.github.com/repos/bluetree-service/symfony-console-style/zipball/cb6dd16981fa22c164b5fbb0a9e6adf281e52944",
+                "reference": "cb6dd16981fa22c164b5fbb0a9e6adf281e52944",
                 "shasum": ""
             },
             "require": {
@@ -103,9 +103,9 @@
             "description": "Extends symfony console display style",
             "support": {
                 "issues": "https://github.com/bluetree-service/symfony-console-style/issues",
-                "source": "https://github.com/bluetree-service/symfony-console-style/tree/0.7.0.0"
+                "source": "https://github.com/bluetree-service/symfony-console-style/tree/0.8.0.0"
             },
-            "time": "2026-03-10T19:13:51+00:00"
+            "time": "2026-10-13T11:40:35+00:00"
         },
         {
             "name": "evenement/evenement",
